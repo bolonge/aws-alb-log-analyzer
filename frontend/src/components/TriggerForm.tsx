@@ -8,6 +8,7 @@ interface Props {
 
 export default function TriggerForm({ onCreated, onCancel }: Props) {
   const [alarmTime, setAlarmTime] = useState("");
+  const [tz, setTz] = useState<"UTC" | "KST">("UTC");
   const [sourceType, setSourceType] = useState<"alb" | "cloudfront">("alb");
   const [bucket, setBucket] = useState("");
   const [prefix, setPrefix] = useState("");
@@ -22,9 +23,12 @@ export default function TriggerForm({ onCreated, onCancel }: Props) {
     }
     setLoading(true);
     setError("");
+    // Append offset so the browser doesn't apply local timezone
+    const suffix = tz === "KST" ? "+09:00" : "Z";
+    const isoTime = new Date(alarmTime + suffix).toISOString();
     try {
       const result = await triggerAnalysis({
-        alarm_time: new Date(alarmTime).toISOString(),
+        alarm_time: isoTime,
         source_type: sourceType,
         s3_bucket: bucket || undefined,
         s3_prefix: prefix || undefined,
@@ -79,15 +83,39 @@ export default function TriggerForm({ onCreated, onCancel }: Props) {
 
         {/* Alarm Time */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>
-            Alarm Time (KST) *
+          <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
+            Alarm Time *
           </label>
-          <input
-            type="datetime-local"
-            value={alarmTime}
-            onChange={(e) => setAlarmTime(e.target.value)}
-            style={{ padding: "6px 10px", width: 280 }}
-          />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <input
+              type="datetime-local"
+              value={alarmTime}
+              onChange={(e) => setAlarmTime(e.target.value)}
+              style={{ padding: "6px 10px", width: 220 }}
+            />
+            {/* Timezone toggle */}
+            <div style={{ display: "flex", gap: 0 }}>
+              {(["UTC", "KST"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTz(t)}
+                  style={{
+                    padding: "6px 14px",
+                    border: "1px solid #ccc",
+                    borderRadius: t === "UTC" ? "4px 0 0 4px" : "0 4px 4px 0",
+                    background: tz === t ? "#444" : "#fff",
+                    color: tz === t ? "white" : "#333",
+                    cursor: "pointer",
+                    fontWeight: tz === t ? 600 : 400,
+                    fontSize: 12,
+                  }}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Optional overrides */}

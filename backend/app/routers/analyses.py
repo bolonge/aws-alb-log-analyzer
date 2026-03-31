@@ -1,7 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 from uuid import UUID
-
-KST = timezone(timedelta(hours=9))
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -28,11 +26,11 @@ async def create_analysis(
     db: AsyncSession = Depends(get_db),
     s: Settings = Depends(get_settings),
 ):
-    # Frontend sends KST time; ensure it has timezone info
+    # Frontend always sends timezone-aware ISO string; convert to UTC
     alarm_time = body.alarm_time
     if alarm_time.tzinfo is None:
-        alarm_time = alarm_time.replace(tzinfo=KST)
-    # Convert to UTC for storage and S3 lookup
+        # Fallback: treat naive datetime as UTC
+        alarm_time = alarm_time.replace(tzinfo=timezone.utc)
     alarm_utc = alarm_time.astimezone(timezone.utc)
     window = timedelta(minutes=s.analysis_window_minutes)
     # For CloudFront, use cf_s3_prefix as default if no prefix given
